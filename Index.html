@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Licitações & Validade de Certidões - Workspace_Licitacoes</title>
+    <title>Painel de Licitações & Validade de Certidões</title>
 
     <!-- Biblioteca para exportação em PDF fiel ao layout Weasyprint -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -133,7 +133,7 @@
 
 <div class="container">
     <header>
-        <h1>Sistema Integrado de Licitações (Pasta: Workspace_Licitacoes)</h1>
+        <h1>Sistema Integrado de Licitações</h1>
     </header>
 
     <!-- Barra de Navegação entre Abas Principais -->
@@ -152,7 +152,7 @@
             <div class="rules-card">
                 <strong>Instruções de Auditoria e Sincronização:</strong>
                 <ul>
-                    <li>Anexe o arquivo PDF oficial do edital. O sistema fará a extração, auditoria documental e salvará permanentemente na pasta <strong>Workspace_Licitacoes</strong>.</li>
+                    <li>Anexe o arquivo PDF oficial do edital. O sistema fará a extração, auditoria documental e salvará permanentemente.</li>
                 </ul>
             </div>
             <form id="editalForm" onsubmit="event.preventDefault(); analisarEditalPDF();">
@@ -669,7 +669,7 @@
         formData.append('pdf_file', fileInput.files[0]);
 
         const btnSubmit = document.querySelector('#editalForm button[type="submit"]');
-        btnSubmit.innerText = '⏳ Lendo PDF e Salvando na pasta Workspace_Licitacoes...';
+        btnSubmit.innerText = '⏳ Lendo PDF e Salvando...';
         btnSubmit.disabled = true;
 
         try {
