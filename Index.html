@@ -1,0 +1,1465 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Licitações & Validade de Certidões - Workspace_Licitacoes</title>
+
+    <!-- Biblioteca para exportação em PDF fiel ao layout Weasyprint -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Biblioteca EmailJS para envio direto de e-mails -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+        body { background-color: #f4f6f9; color: #333; padding: 20px; }
+        .container { max-width: 1250px; margin: 0 auto; }
+        
+        header { background: #0288d1; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center; }
+        
+        /* Navegação por Abas Principais */
+        .nav-tabs { display: flex; background: #01579b; border-radius: 0 0 8px 8px; margin-bottom: 20px; overflow: hidden; }
+        .tab-btn { flex: 1; padding: 15px; background: transparent; color: white; border: none; font-size: 13px; font-weight: bold; cursor: pointer; transition: 0.3s; text-align: center; }
+        .tab-btn:hover { background: rgba(255,255,255,0.15); }
+        .tab-btn.active { background: white; color: #0288d1; border-bottom: 3px solid #0288d1; }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Sub-Navegação por Empresa com Alerta Visual de Cores */
+        .company-subtabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e0e0e0; padding-bottom: 10px; flex-wrap: wrap; }
+        .subtab-btn { padding: 10px 18px; background: #e0e0e0; color: #555; border: none; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .subtab-btn:hover { background: #bdbdbd; opacity: 0.9; }
+        .subtab-btn.active { background: #0288d1; color: white; border: 2px solid #01579b; }
+
+        /* Cores Dinâmicas de Alerta nas Sub-abas */
+        .subtab-btn.status-alerta-vencido { background-color: #ffebee !important; color: #c62828 !important; border: 2px solid #c62828 !important; }
+        .subtab-btn.status-alerta-vencido.active { background-color: #c62828 !important; color: white !important; }
+
+        .subtab-btn.status-alerta-atencao { background-color: #fffde7 !important; color: #f57f17 !important; border: 2px solid #fbc02d !important; }
+        .subtab-btn.status-alerta-atencao.active { background-color: #fbc02d !important; color: #333 !important; }
+
+        .subtab-btn.status-alerta-ok { background-color: #e8f5e9 !important; color: #2e7d32 !important; border: 2px solid #a5d6a7 !important; }
+        .subtab-btn.status-alerta-ok.active { background-color: #2e7d32 !important; color: white !important; }
+
+        /* KPIs */
+        .kpi-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .kpi-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: center; border-top: 4px solid #ccc; }
+        .kpi-card.valido { border-color: #2e7d32; }
+        .kpi-card.atencao { border-color: #fbc02d; }
+        .kpi-card.vencido { border-color: #c62828; }
+        .kpi-card h3 { font-size: 14px; color: #666; margin-bottom: 10px; }
+        .kpi-card .number { font-size: 32px; font-weight: bold; }
+        
+        /* Blocos de Conteúdo e Formulários */
+        .content-box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        h2 { font-size: 18px; margin-bottom: 15px; color: #0288d1; }
+        
+        .form-group { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; }
+        .form-group input, .form-group select, .form-group textarea, .form-group button { padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        .form-group input, .form-group select { flex: 1; min-width: 150px; }
+        .form-group button { background: #0288d1; color: white; border: none; cursor: pointer; font-weight: bold; }
+        .form-group button:hover { background: #01579b; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; color: #555; }
+        
+        /* Status Badges e Botões */
+        .badge { padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; display: inline-block; }
+        .badge-valido { background: #e8f5e9; color: #2e7d32; }
+        .badge-atencao { background: #fffde7; color: #f57f17; }
+        .badge-vencido { background: #ffebee; color: #c62828; }
+        
+        .btn-link { background: #0288d1; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; text-decoration: none; font-size: 12px; font-weight: bold; display: inline-block; }
+        .btn-link:hover { background: #01579b; }
+        .btn-link.disabled { background: #b0bec5; pointer-events: none; }
+        .btn-edit { background: #fbc02d; color: #333; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+        .btn-edit:hover { background: #f9a825; }
+        .btn-del { background: #ff4d4d; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+        .btn-del:hover { background: #c62828; }
+        .action-cell { display: flex; gap: 6px; align-items: center; }
+
+        .rules-card { background: #e1f5fe; border-left: 5px solid #0288d1; padding: 15px; border-radius: 4px; margin-bottom: 20px; font-size: 13px; line-height: 1.6; }
+        .rules-card ul { margin-left: 20px; margin-top: 5px; }
+        .btn-pdf { background: #2e7d32 !important; font-size: 15px !important; padding: 12px 24px !important; cursor: pointer; }
+        .btn-pdf:hover { background: #1b5e20 !important; }
+        textarea.raw-input { width: 100%; height: 220px; font-family: monospace; font-size: 13px; padding: 12px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; }
+
+        /* Estilos do Modal de Edição Customizado */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-box { background: white; padding: 25px; border-radius: 8px; width: 450px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .modal-box h3 { color: #0288d1; margin-bottom: 15px; font-size: 16px; }
+        .modal-field { margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px; }
+        .modal-field label { font-size: 12px; font-weight: bold; color: #555; }
+        .modal-field input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+
+        /* Estilos da Agenda Visual (Mês / Semana) */
+        .agenda-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #e1f5fe; padding: 15px; border-radius: 8px; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+        .calendar-weekday { text-align: center; font-weight: bold; color: #0288d1; padding: 8px; background: #f0f4f8; border-radius: 4px; font-size: 13px; }
+        .calendar-day { background: white; border: 1px solid #e0e0e0; min-height: 100px; border-radius: 6px; padding: 8px; display: flex; flex-direction: column; position: relative; }
+        .calendar-day.other-month { background: #fafafa; color: #bbb; }
+        .calendar-day.today { border: 2px solid #0288d1; background: #f9fdff; }
+        .day-number { font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #444; }
+        .agenda-event { background: #01579b; color: white; font-size: 11px; padding: 4px 6px; border-radius: 4px; margin-bottom: 4px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .agenda-event:hover { background: #0288d1; }
+
+        /* Estilos dos Cards Retráteis de Edital */
+        .card-edital { border: 1px solid #dee2e6; border-radius: 8px; margin-bottom: 12px; background: #fff; overflow: hidden; transition: 0.2s; }
+        .card-edital.selecionado { border-color: #0288d1; background-color: #f4faff; }
+        .header-edital { padding: 15px; background: #f8f9fa; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .header-edital:hover { background: #eef2f5; }
+        .corpo-edital { padding: 20px; border-top: 1px solid #dee2e6; display: none; background: #fff; }
+        
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; margin-bottom: 15px; }
+        .info-item { background: #f8f9fa; padding: 10px 15px; border-radius: 4px; border: 1px solid #eee; font-size: 13px; }
+        .info-item.destaque-disputa { background: #e8f5e9; border-color: #a5d6a7; }
+        .info-item.alerta-lei { background: #fff3e0; border-color: #ffe0b2; }
+        .info-item strong { color: #0288d1; display: block; margin-bottom: 4px; font-size: 11px; text-transform: uppercase; }
+        .info-item.destaque-disputa strong { color: #2e7d32; }
+        .info-item.alerta-lei strong { color: #e65100; }
+        
+        .btn-acao { padding: 8px 15px; font-size: 13px; cursor: pointer; border-radius: 4px; border: none; font-weight: bold; transition: 0.2s; }
+        .btn-outline { background: transparent; border: 1px solid #999; color: #333; }
+        .btn-outline:hover { background: #eee; }
+        .btn-danger { background: #d32f2f; color: #fff; }
+        .btn-danger:hover { background: #b71c1c; }
+        .btn-danger:disabled { background: #ef9a9a; cursor: not-allowed; }
+        .checkbox-large { width: 18px; height: 18px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Sistema Integrado de Licitações (Pasta: Workspace_Licitacoes)</h1>
+    </header>
+
+    <!-- Barra de Navegação entre Abas Principais -->
+    <div class="nav-tabs">
+        <button class="tab-btn active" onclick="trocarAba('edital')">📄 Análise de Edital (PDF & IA)</button>
+        <button class="tab-btn" onclick="trocarAba('calendario')">📅 Agenda</button>
+        <button class="tab-btn" onclick="trocarAba('resultado')">📄 Gerar Resultado PDF</button>
+        <button class="tab-btn" onclick="trocarAba('certidoes')">📋 Validade de Certidões</button>
+        <button class="tab-btn" onclick="trocarAba('portais')">🌐 Validade dos Portais</button>
+    </div>
+
+    <!-- ================= ABA 0: ANÁLISE DE EDITAL (PDF & GEMINI) ================= -->
+    <div id="tab-edital" class="tab-content active">
+        <div class="content-box">
+            <h2>🤖 Análise Inteligente de Edital por PDF (Gemini)</h2>
+            <div class="rules-card">
+                <strong>Instruções de Auditoria e Sincronização:</strong>
+                <ul>
+                    <li>Anexe o arquivo PDF oficial do edital. O sistema fará a extração, auditoria documental e salvará permanentemente na pasta <strong>Workspace_Licitacoes</strong>.</li>
+                </ul>
+            </div>
+            <form id="editalForm" onsubmit="event.preventDefault(); analisarEditalPDF();">
+                <div style="margin-bottom: 15px;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">Anexar Arquivo PDF do Edital:</label>
+                    <input type="file" id="pdfEditalFile" accept="application/pdf" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; background: #fafafa;" required>
+                </div>
+                <div style="text-align: right; margin-top: 15px;">
+                    <button type="submit" class="form-group button" style="background: #0288d1; font-size: 15px; padding: 12px 24px;">✨ Enviar e Auditar Edital com Gemini</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="content-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;">
+                <h2 style="margin: 0;">🗂️ Histórico de Processos Analisados (Sincronizado)</h2>
+                <div style="display: flex; gap: 15px; align-items: center; background: #f8f9fa; padding: 10px 15px; border-radius: 6px; border: 1px solid #eee;">
+                    <label style="cursor: pointer; font-size: 14px; font-weight: bold; display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="checkSelectAll" class="checkbox-large" onchange="alternarSelecionarTodos(this)"> Selecionar Todos
+                    </label>
+                    <span id="badgeContador" class="badge badge-atencao" style="font-size: 13px;">0 selecionado(s)</span>
+                    <button class="btn-acao btn-danger" id="btnExcluirSelecionados" onclick="excluirSelecionados()" disabled>🗑️ Excluir Seleção</button>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <input type="text" id="inputBuscaEdital" placeholder="Pesquisar por órgão, pregão ou arquivo..." oninput="filtrarHistoricoEditais()" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+            </div>
+            
+            <div id="listaProcessosAnalisados">
+                <div style="text-align: center; color: #888; font-style: italic; padding: 20px;">Carregando histórico salvo...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= ABA 1: AGENDA (CALENDÁRIO VISUAL) ================= -->
+    <div id="tab-calendario" class="tab-content">
+        <div class="content-box">
+            <h2>📅 Gestão da Agenda de Licitações</h2>
+            
+            <div class="agenda-header">
+                <div>
+                    <button class="btn-link" onclick="mudarPeriodo(-1)">◀ Anterior</button>
+                    <span id="calendarioTituloMes" style="font-weight: bold; font-size: 16px; margin: 0 15px; color: #01579b;">Mês / Ano</span>
+                    <button class="btn-link" onclick="mudarPeriodo(1)">Seguinte ▶</button>
+                </div>
+                <div>
+                    <select id="tipoVisualizacao" onchange="renderizarAgendaVisual()" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold;">
+                        <option value="mes">Visualização: Mês</option>
+                        <option value="semana">Visualização: Semana</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="calendar-grid" id="calendarHeaderGrid">
+                <div class="calendar-weekday">Seg</div>
+                <div class="calendar-weekday">Ter</div>
+                <div class="calendar-weekday">Qua</div>
+                <div class="calendar-weekday">Qui</div>
+                <div class="calendar-weekday">Sex</div>
+                <div class="calendar-weekday">Sáb</div>
+                <div class="calendar-weekday">Dom</div>
+            </div>
+            <div class="calendar-grid" id="calendarDaysGrid" style="margin-top: 8px;"></div>
+        </div>
+
+        <div class="content-box">
+            <h2>Cadastrar Manualmente na Agenda</h2>
+            <form class="form-group" id="licitacaoForm">
+                <input type="text" id="orgaoLicitacao" placeholder="Órgão / Entidade (Ex: Prefeitura de Fortaleza)" required>
+                <input type="text" id="numeroPregao" placeholder="Pregão / Processo (Ex: PE 90062/2025)" required>
+                <select id="empresaParticipante" required>
+                    <option value="">Empresa Participante</option>
+                    <option value="SAFE SUPORTE A VIDA">SAFE SUPORTE A VIDA</option>
+                    <option value="JMA COMÉRCIO E IMPORTAÇÃO">JMA COMÉRCIO E IMPORTAÇÃO</option>
+                    <option value="3R">3R</option>
+                    <option value="MINDRAY">MINDRAY</option>
+                </select>
+                <input type="datetime-local" id="dataHoraLicitacao" required>
+                <input type="url" id="linkPortal" placeholder="Link do Portal (Ex: Comprasnet)" required>
+                <button type="submit" style="background: #01579b;">Agendar na Agenda</button>
+            </form>
+        </div>
+
+        <div class="content-box">
+            <h2>Lista de Certames Agendados</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data e Hora</th>
+                        <th>Órgão</th>
+                        <th>Pregão / Processo</th>
+                        <th>Empresa</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaLicitacoes"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ================= ABA 2: GERAR RESULTADO PDF ================= -->
+    <div id="tab-resultado" class="tab-content">
+        <div class="content-box">
+            <h2>Gerador de Resultado via Gemini (Manual Definitivo)</h2>
+            <form id="resultadoForm" onsubmit="event.preventDefault(); processarEGerarPDF();">
+                <div style="margin-bottom: 15px;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px;">Cole aqui o resultado completo do certame:</label>
+                    <textarea id="textoBrutoResultado" class="raw-input" placeholder="Cole aqui o texto completo..."></textarea>
+                </div>
+                <div style="text-align: right; margin-top: 15px;">
+                    <button type="button" class="btn-del" onclick="document.getElementById('textoBrutoResultado').value=''" style="background: #757575; margin-right: 10px; padding: 12px 20px;">Limpar Texto</button>
+                    <button type="submit" class="form-group button btn-pdf">📥 Processar e Gerar PDF</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= ABA 3: VALIDADE DE CERTIDÕES (SAFE, JMA, 3R, MINDRAY) ================= -->
+    <div id="tab-certidoes" class="tab-content">
+        <div class="company-subtabs" id="subtabsCertidoesContainer">
+            <button class="subtab-btn" data-empresa="SAFE" onclick="trocarEmpresaCertidoes('SAFE')">🏢 SAFE SUPORTE A VIDA</button>
+            <button class="subtab-btn" data-empresa="JMA" onclick="trocarEmpresaCertidoes('JMA')">🏬 JMA COMÉRCIO E IMPORTAÇÃO</button>
+            <button class="subtab-btn" data-empresa="3R" onclick="trocarEmpresaCertidoes('3R')">📦 3R</button>
+            <button class="subtab-btn" data-empresa="MINDRAY" onclick="trocarEmpresaCertidoes('MINDRAY')">🔬 MINDRAY</button>
+        </div>
+
+        <div class="kpi-container">
+            <div class="kpi-card">
+                <h3>TOTAL DE CERTIDÕES (<span id="empresa-nome-kpi">SAFE</span>)</h3>
+                <div class="number" id="total-docs">0</div>
+            </div>
+            <div class="kpi-card valido">
+                <h3>🟢 VÁLIDAS</h3>
+                <div class="number" id="total-validos" style="color: #2e7d32;">0</div>
+            </div>
+            <div class="kpi-card atencao">
+                <h3>🟡 ATENÇÃO (&le; 15 dias)</h3>
+                <div class="number" id="total-atencao" style="color: #fbc02d;">0</div>
+            </div>
+            <div class="kpi-card vencido">
+                <h3>🔴 VENCIDAS</h3>
+                <div class="number" id="total-vencidos" style="color: #c62828;">0</div>
+            </div>
+        </div>
+
+        <div class="content-box" style="background: #fff8e1; border: 1px solid #ffe082;">
+            <h2>⚠️ Enviar Alerta de Renovação de Certidões</h2>
+            <div class="rules-card" style="margin-bottom: 15px; background: #fffde7; border-color: #fbc02d;">
+                <strong>Instruções do Alerta:</strong>
+                <ol style="margin-left: 15px;">
+                    <li>Selecione as certidões críticas marcando as caixas na tabela abaixo.</li>
+                    <li>Informe os e-mails dos responsáveis (para vários destinatários, separe por vírgula).</li>
+                    <li>Clique em <strong>"🚨 Enviar Alerta de Renovação"</strong>. O aviso sairá de <strong>licitacao6@gmail.com</strong>.</li>
+                </ol>
+            </div>
+            <form class="form-group" id="emailMultiploForm" onsubmit="event.preventDefault(); enviarAlertaRenovacaoEmailJS();">
+                <input type="email" id="emailRemetenteFixo" value="licitacao6@gmail.com" readonly style="background: #e9ecef; font-weight: bold; max-width: 230px;" title="Remetente fixo">
+                <input type="text" id="emailDestinatarioMultiplo" placeholder="E-mails (Ex: resp1@empresa.com, resp2@empresa.com)" required style="flex: 2;">
+                <button type="submit" id="btnDispararEmail" style="background: #f57f17; color: white;">🚨 Enviar Alerta de Renovação</button>
+            </form>
+        </div>
+
+        <div class="content-box">
+            <h2>Cadastrar Nova Certidão para <span id="empresa-nome-form" style="color: #0288d1;">SAFE</span></h2>
+            <form class="form-group" id="docForm" onsubmit="event.preventDefault(); adicionarCertidao();">
+                <input type="text" id="documento" placeholder="Nome do Documento (Ex: CND Receita)" required>
+                <input type="date" id="dataVencimento" required>
+                <input type="url" id="linkRenovacao" placeholder="Link de Renovação (Opcional)">
+                <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 11px; font-weight: bold; color: #555;">Anexar Arquivo (PDF/Imagem):</label>
+                    <input type="file" id="arquivoCertidao" accept=".pdf,image/*" style="padding: 6px; background: #fafafa; font-size: 12px;">
+                </div>
+                <button type="submit" style="align-self: flex-end; height: 42px;">Adicionar Documento</button>
+            </form>
+        </div>
+
+        <div class="content-box">
+            <h2>Documentos Acompanhados - <span id="empresa-nome-tabela">SAFE</span></h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 40px; text-align: center;"><input type="checkbox" id="checkAllCert" class="checkbox-large" onchange="alternarTodasCertidoes(this)"></th>
+                        <th>Documento</th>
+                        <th>Vencimento</th>
+                        <th>Dias Restantes</th>
+                        <th>Status</th>
+                        <th>Arquivo</th>
+                        <th>Ações & Renovação</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaDocs"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ================= ABA 4: VALIDADE DOS PORTAIS ================= -->
+    <div id="tab-portais" class="tab-content">
+        <div class="company-subtabs" id="subtabsPortaisContainer">
+            <button class="subtab-btn" data-empresa="SAFE" onclick="trocarEmpresaPortais('SAFE')">🏢 SAFE SUPORTE A VIDA</button>
+            <button class="subtab-btn" data-empresa="JMA" onclick="trocarEmpresaPortais('JMA')">🏬 JMA COMÉRCIO E IMPORTAÇÃO</button>
+        </div>
+
+        <div class="kpi-container">
+            <div class="kpi-card">
+                <h3>TOTAL DE PORTAIS (<span id="empresa-nome-kpi-portais">SAFE</span>)</h3>
+                <div class="number" id="total-portais">0</div>
+            </div>
+            <div class="kpi-card valido">
+                <h3>🟢 VÁLIDOS</h3>
+                <div class="number" id="total-validos-portais" style="color: #2e7d32;">0</div>
+            </div>
+            <div class="kpi-card atencao">
+                <h3>🟡 ATENÇÃO (&le; 15 dias)</h3>
+                <div class="number" id="total-atencao-portais" style="color: #fbc02d;">0</div>
+            </div>
+            <div class="kpi-card vencido">
+                <h3>🔴 VENCIDOS</h3>
+                <div class="number" id="total-vencidos-portais" style="color: #c62828;">0</div>
+            </div>
+        </div>
+
+        <div class="content-box" style="background: #fff8e1; border: 1px solid #ffe082;">
+            <h2>⚠️ Enviar Alerta de Renovação de Portais</h2>
+            <div class="rules-card" style="margin-bottom: 15px; background: #fffde7; border-color: #fbc02d;">
+                <strong>Instruções do Alerta de Portais:</strong>
+                <ol style="margin-left: 15px;">
+                    <li>Selecione os portais marcando as caixas na tabela abaixo.</li>
+                    <li>Informe os e-mails dos responsáveis (para vários destinatários, separe por vírgula).</li>
+                    <li>Clique em <strong>"🚨 Enviar Alerta de Portais"</strong>. O aviso sairá de <strong>licitacao6@gmail.com</strong>.</li>
+                </ol>
+            </div>
+            <form class="form-group" id="emailPortaisForm" onsubmit="event.preventDefault(); enviarAlertaPortaisEmailJS();">
+                <input type="email" value="licitacao6@gmail.com" readonly style="background: #e9ecef; font-weight: bold; max-width: 230px;" title="Remetente fixo">
+                <input type="text" id="emailDestinatarioPortais" placeholder="E-mails (Ex: resp1@empresa.com, resp2@empresa.com)" required style="flex: 2;">
+                <button type="submit" id="btnDispararEmailPortais" style="background: #f57f17; color: white;">🚨 Enviar Alerta de Portais</button>
+            </form>
+        </div>
+
+        <div class="content-box">
+            <h2>Cadastrar Novo Portal para <span id="empresa-nome-form-portais" style="color: #0288d1;">SAFE</span></h2>
+            <form class="form-group" id="portalForm" onsubmit="event.preventDefault(); adicionarPortal();">
+                <input type="text" id="nomePortal" placeholder="Nome do Portal (Ex: Comprasnet, Licitações-E)" required>
+                <input type="date" id="dataVencimentoPortal" required>
+                <input type="url" id="linkPortalAcesso" placeholder="Link de Acesso / Renovação (Opcional)">
+                <button type="submit">Adicionar Portal</button>
+            </form>
+        </div>
+
+        <div class="content-box">
+            <h2>Portais Acompanhados - <span id="empresa-nome-tabela-portais">SAFE</span></h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 40px; text-align: center;"><input type="checkbox" id="checkAllPortais" class="checkbox-large" onclick="alternarTodosPortais(this)"></th>
+                        <th>Portal de Licitação</th>
+                        <th>Vencimento</th>
+                        <th>Dias Restantes</th>
+                        <th>Status</th>
+                        <th>Ações & Acesso</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaPortais"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE EDIÇÃO AVANÇADA DE CERTIDÃO -->
+<div id="modalEditarCertidao" class="modal-overlay">
+    <div class="modal-box">
+        <h3>✏️ Editar Certidão</h3>
+        <input type="hidden" id="editIndexCertidao">
+        <div class="modal-field">
+            <label>Nome da Certidão:</label>
+            <input type="text" id="editNomeCert">
+        </div>
+        <div class="modal-field">
+            <label>Nova Data de Vencimento:</label>
+            <input type="date" id="editDataVenc">
+        </div>
+        <div class="modal-field">
+            <label>Novo Link de Renovação:</label>
+            <input type="url" id="editLinkRenov" placeholder="https://...">
+        </div>
+        <div class="modal-field">
+            <label>Substituir Arquivo (Opcional):</label>
+            <input type="file" id="editArquivoCert" accept=".pdf,image/*">
+        </div>
+        <div style="text-align: right; margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+            <button type="button" class="btn-acao btn-outline" onclick="fecharModalEdicao()">Cancelar</button>
+            <button type="button" class="btn-acao" style="background: #0288d1; color: white;" onclick="salvarEdicaoCertidao()">Salvar Alterações</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DE EDIÇÃO DE PORTAL -->
+<div id="modalEditarPortal" class="modal-overlay">
+    <div class="modal-box">
+        <h3>✏️ Editar Portal</h3>
+        <input type="hidden" id="editIndexPortal">
+        <div class="modal-field">
+            <label>Nome do Portal:</label>
+            <input type="text" id="editNomePortal">
+        </div>
+        <div class="modal-field">
+            <label>Nova Data de Vencimento:</label>
+            <input type="date" id="editDataVencPortal">
+        </div>
+        <div class="modal-field">
+            <label>Novo Link de Acesso:</label>
+            <input type="url" id="editLinkPortal" placeholder="https://...">
+        </div>
+        <div style="text-align: right; margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+            <button type="button" class="btn-acao btn-outline" onclick="fecharModalEdicaoPortal()">Cancelar</button>
+            <button type="button" class="btn-acao" style="background: #0288d1; color: white;" onclick="salvarEdicaoPortal()">Salvar Alterações</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ================= CONFIGURAÇÃO DO EMAILJS =================
+    const EMAILJS_PUBLIC_KEY = "cFaFLrJmGXLMVm5VS"; 
+    const EMAILJS_SERVICE_ID = "service_3vf3qfe"; 
+    const EMAILJS_TEMPLATE_ID = "template_g4um2ov";
+
+    (function(){
+        if(EMAILJS_PUBLIC_KEY) {
+            emailjs.init(EMAILJS_PUBLIC_KEY);
+        }
+    })();
+
+    function trocarAba(nomeAba) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        if(nomeAba === 'edital') {
+            document.querySelectorAll('.tab-btn')[0].classList.add('active');
+            document.getElementById('tab-edital').classList.add('active');
+        } else if(nomeAba === 'calendario') {
+            document.querySelectorAll('.tab-btn')[1].classList.add('active');
+            document.getElementById('tab-calendario').classList.add('active');
+            renderizarAgendaVisual();
+            renderizarLicitacoes();
+        } else if(nomeAba === 'resultado') {
+            document.querySelectorAll('.tab-btn')[2].classList.add('active');
+            document.getElementById('tab-resultado').classList.add('active');
+        } else if(nomeAba === 'certidoes') {
+            document.querySelectorAll('.tab-btn')[3].classList.add('active');
+            document.getElementById('tab-certidoes').classList.add('active');
+            renderizarCertidoes();
+        } else if(nomeAba === 'portais') {
+            document.querySelectorAll('.tab-btn')[4].classList.add('active');
+            document.getElementById('tab-portais').classList.add('active');
+            renderizarPortais();
+        }
+    }
+
+    let memoriaHistorico = JSON.parse(localStorage.getItem('historico_editais_db')) || [];
+    let processosSelecionados = new Set();
+
+    document.addEventListener('DOMContentLoaded', () => {
+        renderizarListaProcessos(memoriaHistorico);
+        renderizarCertidoes();
+        renderizarPortais();
+        renderizarLicitacoes();
+    });
+
+    function salvarHistoricoLocalStorage() {
+        localStorage.setItem('historico_editais_db', JSON.stringify(memoriaHistorico));
+    }
+
+    function renderizarListaProcessos(lista) {
+        const container = document.getElementById('listaProcessosAnalisados');
+        container.innerHTML = '';
+        
+        if (!lista || lista.length === 0) {
+            container.innerHTML = '<div style="text-align: center; color: #888; font-style: italic; padding: 20px;">Nenhum edital analisado e salvo no histórico.</div>';
+            atualizarContadorSelecao();
+            return;
+        }
+
+        lista.forEach(item => {
+            const dados = item.dados || {};
+            const idUnico = String(item.id || dados.numero_processo || "proc_" + Math.random());
+            const titulo = dados.pregao_portal || dados.numero_processo || "Processo sem número";
+            const orgao = dados.orgao || "Órgão não especificado";
+            const dataDisputa = dados.data_disputa || dados.data_sessao || "Não informada";
+            const fileInfo = item.filename ? `(${item.filename})` : '';
+            
+            const isChecked = processosSelecionados.has(idUnico) ? 'checked' : '';
+            const cardClass = processosSelecionados.has(idUnico) ? 'card-edital selecionado' : 'card-edital';
+
+            container.innerHTML += `
+            <div class="${cardClass}" id="card-${idUnico}">
+                <div class="header-edital" onclick="toggleCorpo('${idUnico}')">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <input type="checkbox" class="checkbox-large check-processo" value="${idUnico}" ${isChecked} 
+                               onclick="event.stopPropagation();" onchange="alternarSelecionarItem('${idUnico}', this.checked)">
+                        <div>
+                            <div style="font-weight: bold; color: #01579b; font-size: 14px;">📋 ${titulo} <span style="color: #888; font-weight: normal; font-size: 12px;">${fileInfo}</span></div>
+                            <div style="color: #444; font-size: 13px; margin-top: 3px;">${orgao}</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span class="badge badge-valido" style="font-size: 11px;">⚡ Disputa: ${dataDisputa}</span>
+                        <button class="btn-acao btn-outline" id="btn-toggle-${idUnico}">▼ Detalhes da Auditoria</button>
+                    </div>
+                </div>
+
+                <div id="corpo-${idUnico}" class="corpo-edital">
+                    <div style="text-align: right; margin-bottom: 15px;">
+                        <button type="button" onclick="agendarSessaoAutomaticamente('${idUnico}')" class="btn-link" style="background: #2e7d32;">📅 Agendar Disputa no Calendário</button>
+                    </div>
+                    <div class="info-grid">
+                        <div class="info-item destaque-disputa"><strong>⚡ Data/Hora Disputa de Lances</strong>${dataDisputa}</div>
+                        <div class="info-item"><strong>Valor Estimado</strong>${dados.valor_unitario || 'N/A'}</div>
+                        <div class="info-item"><strong>Sessão Pública</strong>${dados.data_sessao || 'N/A'}</div>
+                        <div class="info-item"><strong>Prazo de Entrega</strong>${dados.prazo_entrega || 'N/A'}</div>
+                        <div class="info-item"><strong>Impugnação</strong>${dados.data_impugnacao || 'N/A'}</div>
+                        <div class="info-item"><strong>Esclarecimento</strong>${dados.data_esclarecimento || 'N/A'}</div>
+                        <div class="info-item"><strong>Registro de Preço</strong>${dados.registro_preco || 'N/A'}</div>
+                        <div class="info-item"><strong>Gera Adesão (Carona)</strong>${dados.gera_adesao || 'N/A'}</div>
+                        <div class="info-item"><strong>Seguro Garantia</strong>${dados.seguro_garantia || 'N/A'}</div>
+                        
+                        <div class="info-item"><strong>📑 Documentos de Habilitação</strong>${dados.documentos_habilitacao || 'Não especificado detalhadamente no edital.'}</div>
+                        <div class="info-item"><strong>⚙️ Qualificação Técnica</strong>${dados.documentos_tecnicos || 'Não especificado detalhadamente no edital.'}</div>
+                        <div class="info-item"><strong>📝 Declarações Exigidas</strong>${dados.declaracoes_exigidas || 'Não especificado detalhadamente no edital.'}</div>
+                        <div class="info-item alerta-lei" style="grid-column: 1 / -1;">
+                            <strong>⚖️ Auditoria de Conformidade com a Lei nº 14.133/2021 (Exigências Atípicas / Restritivas)</strong>
+                            <span style="color: #c62828; font-weight: bold; display: block; margin-top: 4px;">${dados.alerta_lei_14133 || 'Nenhuma restrição abusiva ou fuga da Lei nº 14.133/2021 identificada na análise automática.'}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        });
+        
+        atualizarContadorSelecao();
+    }
+
+    function toggleCorpo(id) {
+        const corpo = document.getElementById(`corpo-${id}`);
+        const btn = document.getElementById(`btn-toggle-${id}`);
+        if (corpo.style.display === "none" || corpo.style.display === "") {
+            corpo.style.display = "block";
+            btn.innerHTML = "▲ Minimizar";
+        } else {
+            corpo.style.display = "none";
+            btn.innerHTML = "▼ Detalhes da Auditoria";
+        }
+    }
+
+    function alternarSelecionarItem(id, estaChecado) {
+        const card = document.getElementById(`card-${id}`);
+        if (estaChecado) {
+            processosSelecionados.add(id);
+            if (card) card.classList.add('selecionado');
+        } else {
+            processosSelecionados.delete(id);
+            if (card) card.classList.remove('selecionado');
+        }
+        atualizarContadorSelecao();
+    }
+
+    function alternarSelecionarTodos(masterCheckbox) {
+        const checkboxes = document.querySelectorAll('.check-processo');
+        checkboxes.forEach(cb => {
+            cb.checked = masterCheckbox.checked;
+            alternarSelecionarItem(cb.value, masterCheckbox.checked);
+        });
+    }
+
+    function atualizarContadorSelecao() {
+        const total = processosSelecionados.size;
+        document.getElementById('badgeContador').innerText = `${total} selecionado(s)`;
+        document.getElementById('btnExcluirSelecionados').disabled = total === 0;
+    }
+
+    function excluirSelecionados() {
+        if (processosSelecionados.size === 0) return;
+        if (!confirm(`Deseja excluir permanentemente os ${processosSelecionados.size} processos selecionados?`)) return;
+
+        memoriaHistorico = memoriaHistorico.filter(item => {
+            const idUnico = String(item.id || item.dados?.numero_processo);
+            return !processosSelecionados.has(idUnico);
+        });
+
+        processosSelecionados.clear();
+        salvarHistoricoLocalStorage();
+        renderizarListaProcessos(memoriaHistorico);
+        document.getElementById('checkSelectAll').checked = false;
+    }
+
+    function filtrarHistoricoEditais() {
+        const termo = document.getElementById('inputBuscaEdital').value.toLowerCase();
+        const filtrados = memoriaHistorico.filter(item => {
+            const dados = item.dados || {};
+            return (item.id && item.id.toLowerCase().includes(termo)) || 
+                   (item.filename && item.filename.toLowerCase().includes(termo)) ||
+                   (dados.orgao && dados.orgao.toLowerCase().includes(termo)) ||
+                   (dados.numero_processo && dados.numero_processo.toLowerCase().includes(termo));
+        });
+        renderizarListaProcessos(filtrados);
+    }
+
+    async function analisarEditalPDF() {
+        const fileInput = document.getElementById('pdfEditalFile');
+        if (fileInput.files.length === 0) {
+            alert('Por favor, selecione um arquivo PDF.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('pdf_file', fileInput.files[0]);
+
+        const btnSubmit = document.querySelector('#editalForm button[type="submit"]');
+        btnSubmit.innerText = '⏳ Lendo PDF e Salvando na pasta Workspace_Licitacoes...';
+        btnSubmit.disabled = true;
+
+        try {
+            const response = await fetch('/api/analisar-edital-pdf', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const resData = await response.json();
+            if(resData.error) {
+                alert('Erro ao analisar edital: ' + resData.error);
+                return;
+            }
+
+            if (resData.historico) {
+                memoriaHistorico = resData.historico;
+            } else {
+                memoriaHistorico.unshift({
+                    id: String(Date.now()),
+                    filename: fileInput.files[0].name,
+                    dados: resData.dados || resData
+                });
+            }
+
+            salvarHistoricoLocalStorage();
+            document.getElementById('inputBuscaEdital').value = '';
+            renderizarListaProcessos(memoriaHistorico);
+            fileInput.value = '';
+
+        } catch (err) {
+            alert('Erro de comunicação com o servidor local.');
+        } finally {
+            btnSubmit.innerText = '✨ Enviar e Auditar Edital com Gemini';
+            btnSubmit.disabled = false;
+        }
+    }
+
+    /* ================= LÓGICA DA ABA 1: AGENDA ================= */
+    let dataAtualVisualizacao = new Date();
+    let agendaLicitacoes = JSON.parse(localStorage.getItem('agenda_licitacoes_db')) || [];
+
+    function mudarPeriodo(direcao) {
+        const tipo = document.getElementById('tipoVisualizacao').value;
+        if (tipo === 'mes') {
+            dataAtualVisualizacao.setMonth(dataAtualVisualizacao.getMonth() + direcao);
+        } else {
+            dataAtualVisualizacao.setDate(dataAtualVisualizacao.getDate() + (direcao * 7));
+        }
+        renderizarAgendaVisual();
+    }
+
+    function renderizarAgendaVisual() {
+        const grid = document.getElementById('calendarDaysGrid');
+        const titulo = document.getElementById('calendarioTituloMes');
+        const tipo = document.getElementById('tipoVisualizacao').value;
+        grid.innerHTML = '';
+
+        const ano = dataAtualVisualizacao.getFullYear();
+        const mes = dataAtualVisualizacao.getMonth();
+
+        const mesesNomes = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+        if (tipo === 'mes') {
+            titulo.innerText = `${mesesNomes[mes]} de ${ano}`;
+            const primeiroDiaMes = new Date(ano, mes, 1);
+            let diaSemanaInicio = primeiroDiaMes.getDay(); 
+            diaSemanaInicio = diaSemanaInicio === 0 ? 6 : diaSemanaInicio - 1;
+            const ultimoDiaMes = new Date(ano, mes + 1, 0).getDate();
+            const ultimoDiaMesAnterior = new Date(ano, mes, 0).getDate();
+            let totalCelulasGrid = Math.ceil((diaSemanaInicio + ultimoDiaMes) / 7) * 7;
+            let diaContador = 1;
+            let proximoMesDia = 1;
+            const hojeStr = new Date().toISOString().slice(0, 10);
+
+            for (let i = 0; i < totalCelulasGrid; i++) {
+                let cellDateStr = '';
+                let cellClass = 'calendar-day';
+                let numeroExibido = '';
+
+                if (i < diaSemanaInicio) {
+                    let d = ultimoDiaMesAnterior - (diaSemanaInicio - 1 - i);
+                    cellClass += ' other-month';
+                    numeroExibido = d;
+                    let mAnt = mes === 0 ? 11 : mes - 1;
+                    let aAnt = mes === 0 ? ano - 1 : ano;
+                    cellDateStr = `${aAnt}-${String(mAnt + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                } else if (diaContador <= ultimoDiaMes) {
+                    numeroExibido = diaContador;
+                    cellDateStr = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(diaContador).padStart(2, '0')}`;
+                    if (cellDateStr === hojeStr) cellClass += ' today';
+                    diaContador++;
+                } else {
+                    cellClass += ' other-month';
+                    numeroExibido = proximoMesDia;
+                    let mProx = mes === 11 ? 0 : mes + 1;
+                    let aProx = mes === 11 ? ano + 1 : ano;
+                    cellDateStr = `${aProx}-${String(mProx + 1).padStart(2, '0')}-${String(proximoMesDia).padStart(2, '0')}`;
+                    proximoMesDia++;
+                }
+
+                let eventosNoDia = agendaLicitacoes.filter(item => item.dataHora && item.dataHora.startsWith(cellDateStr));
+                let eventosHtml = '';
+                eventosNoDia.forEach(ev => {
+                    let horaFmt = ev.dataHora.split('T')[1] || '';
+                    eventosHtml += `<div class="agenda-event" title="${ev.pregao} - ${ev.orgao}">[${horaFmt}] ${ev.pregao}</div>`;
+                });
+
+                grid.innerHTML += `<div class="${cellClass}"><div class="day-number">${numeroExibido}</div>${eventosHtml}</div>`;
+            }
+        } else {
+            let curr = new Date(dataAtualVisualizacao);
+            let primeira = curr.getDate() - curr.getDay() + 1; 
+            let primeiraData = new Date(curr.setDate(primeira));
+            let ultimaData = new Date(curr.setDate(primeiraData.getDate() + 6));
+            titulo.innerText = `Semana de ${primeiraData.toLocaleDateString('pt-BR')} a ${ultimaData.toLocaleDateString('pt-BR')}`;
+            let diaIteracao = new Date(primeiraData);
+            const hojeStr = new Date().toISOString().slice(0, 10);
+
+            for (let i = 0; i < 7; i++) {
+                let cellDateStr = diaIteracao.toISOString().slice(0, 10);
+                let cellClass = 'calendar-day';
+                if (cellDateStr === hojeStr) cellClass += ' today';
+
+                let eventosNoDia = agendaLicitacoes.filter(item => item.dataHora && item.dataHora.startsWith(cellDateStr));
+                let eventosHtml = '';
+                eventosNoDia.forEach(ev => {
+                    let horaFmt = ev.dataHora.split('T')[1] || '';
+                    eventosHtml += `<div class="agenda-event" title="${ev.pregao} - ${ev.orgao}">[${horaFmt}] ${ev.pregao}</div>`;
+                });
+
+                grid.innerHTML += `<div class="${cellClass}"><div class="day-number">${diaIteracao.getDate()}/${diaIteracao.getMonth() + 1}</div>${eventosHtml}</div>`;
+                diaIteracao.setDate(diaIteracao.getDate() + 1);
+            }
+        }
+    }
+
+    function agendarSessaoAutomaticamente(idProcesso) {
+        const itemSelecionado = memoriaHistorico.find(h => String(h.id) === String(idProcesso));
+        if (!itemSelecionado) {
+            alert('Erro ao localizar os dados deste edital.');
+            return;
+        }
+
+        const dadosEdital = itemSelecionado.dados;
+        const orgao = dadosEdital.orgao || 'Órgão não especificado';
+        const pregao = dadosEdital.numero_processo || dadosEdital.pregao_portal || 'Pregão';
+        const dataDisputaRaw = dadosEdital.data_disputa || dadosEdital.data_sessao || '';
+        
+        let dataHoraISO = '';
+        const matchData = dataDisputaRaw.match(/(\d{2})[/-](\d{2})[/-](\d{4})/);
+        const matchHora = dataDisputaRaw.match(/(\d{2}):(\d{2})/);
+
+        if (matchData) {
+            const ano = matchData[3];
+            const mes = matchData[2];
+            const dia = matchData[1];
+            const hora = matchHora ? matchHora[1] : '09';
+            const minuto = matchHora ? matchHora[2] : '00';
+            dataHoraISO = `${ano}-${mes}-${dia}T${hora}:${minuto}`;
+        } else {
+            const now = new Date();
+            dataHoraISO = now.toISOString().slice(0,16);
+        }
+
+        agendaLicitacoes.push({
+            id: Date.now(),
+            orgao: orgao,
+            pregao: pregao,
+            empresa: "SAFE SUPORTE A VIDA",
+            dataHora: dataHoraISO,
+            link: "https://www.gov.br/compras"
+        });
+
+        localStorage.setItem('agenda_licitacoes_db', JSON.stringify(agendaLicitacoes));
+        if (dataHoraISO) {
+            dataAtualVisualizacao = new Date(dataHoraISO);
+        }
+        trocarAba('calendario');
+        alert(`Disputa de Lances do processo ${pregao} agendada com sucesso para ${dataDisputaRaw || 'a data especificada'}!`);
+    }
+
+    document.getElementById('licitacaoForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const orgao = document.getElementById('orgaoLicitacao').value;
+        const pregao = document.getElementById('numeroPregao').value;
+        const empresa = document.getElementById('empresaParticipante').value;
+        const dataHora = document.getElementById('dataHoraLicitacao').value;
+        const link = document.getElementById('linkPortal').value;
+
+        agendaLicitacoes.push({ id: Date.now(), orgao, pregao, empresa, dataHora, link });
+        renderizarLicitacoes();
+        renderizarAgendaVisual();
+        this.reset();
+    });
+
+    function renderizarLicitacoes() {
+        const tabela = document.getElementById('tabelaLicitacoes');
+        if (!tabela) return;
+        tabela.innerHTML = '';
+        agendaLicitacoes.sort((a, b) => new Date(a.dataHora) - new Date(b.dataHora));
+
+        agendaLicitacoes.forEach((item, index) => {
+            const dataObj = new Date(item.dataHora);
+            const dataFormatada = dataObj.toLocaleDateString('pt-BR') + ' às ' + dataObj.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+            const diffDias = Math.ceil((dataObj - new Date()) / (1000 * 60 * 60 * 24));
+            
+            let statusBadge = '<span class="badge badge-valido">📅 Agendado</span>';
+            if (diffDias < 0) statusBadge = '<span class="badge badge-vencido">🔴 Encerrado</span>';
+            else if (diffDias === 0) statusBadge = '<span class="badge badge-atencao">⚡ É HOJE!</span>';
+            else if (diffDias <= 3) statusBadge = `<span class="badge badge-atencao">⚠️ Faltam ${diffDias} dias</span>`;
+
+            tabela.innerHTML += `
+                <tr>
+                    <td><strong>${dataFormatada}</strong></td>
+                    <td>${item.orgao}</td>
+                    <td>${item.pregao}</td>
+                    <td><span style="font-weight: bold; color: #01579b;">${item.empresa}</span></td>
+                    <td>${statusBadge}</td>
+                    <td>
+                        <div class="action-cell">
+                            <a href="${item.link}" target="_blank" class="btn-link">🔗 Acessar</a>
+                            <button class="btn-del" onclick="removerLicitacao(${index})">Excluir</button>
+                        </div>
+                    </td>
+                </tr>`;
+        });
+        localStorage.setItem('agenda_licitacoes_db', JSON.stringify(agendaLicitacoes));
+    }
+
+    function removerLicitacao(index) {
+        agendaLicitacoes.splice(index, 1);
+        renderizarLicitacoes();
+        renderizarAgendaVisual();
+    }
+
+    /* ================= LÓGICA DA ABA 2: GERAR RESULTADO PDF ================= */
+    const empresasDestaque = [
+        "SAFE SUPORTE A VIDA E COMERCIO INTERNACIONAL LTDA",
+        "JMA COMERCIO E IMPORTACAO LTDA",
+        "3R",
+        "MINDRAY"
+    ];
+
+    async function processarEGerarPDF() {
+        const textoBruto = document.getElementById('textoBrutoResultado').value.trim();
+        if (!textoBruto) {
+            alert('Por favor, cole as informações do resultado.');
+            return;
+        }
+
+        let listaProcessada = [];
+        let itemLote = "RESULTADO DO CERTAME";
+
+        try {
+            const response = await fetch('/api/processar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ texto: textoBruto })
+            });
+            
+            const parsed = await response.json();
+            if(parsed.error) {
+                alert('Erro ao processar: ' + parsed.error);
+                return;
+            }
+
+            itemLote = parsed.item || itemLote;
+            listaProcessada = parsed.fornecedores || [];
+        } catch (err) {
+            alert('Erro de comunicação com o servidor local.');
+            console.error(err);
+            return;
+        }
+
+        listaProcessada.forEach(item => {
+            let sitLower = (item.situacao || '').toLowerCase();
+            if (sitLower.includes('arrematante') || sitLower.includes('vencedor')) {
+                item.situacaoClass = 'status-arrematante';
+            } else if (sitLower.includes('desclassificado')) {
+                item.situacaoClass = 'status-desclassificado';
+            } else {
+                item.situacaoClass = 'status-classificado';
+            }
+        });
+
+        let htmlGerado = `
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <title>resultado.pdf</title>
+            <style>
+                body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #222222; font-size: 8.5pt; line-height: 1.3; padding: 15px; background: #fff; }
+                .main-title { background-color: #1a365d; color: #ffffff; font-size: 12pt; font-weight: bold; padding: 6px 10px; margin-bottom: 0; text-transform: uppercase; text-align: center; }
+                .sub-header { background-color: #edf2f7; color: #2d3748; font-size: 9pt; font-weight: bold; padding: 5px 8px; border: 1px solid #cbd5e0; margin-bottom: 10px; text-align: center; text-transform: uppercase; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 8pt; }
+                th { background-color: #f1f5f9; color: #334155; font-weight: bold; text-align: left; padding: 5px 6px; border: 1px solid #cbd5e0; font-size: 7.5pt; text-transform: uppercase; }
+                td { padding: 4px 6px; border: 1px solid #e2e8f0; vertical-align: middle; }
+                tr:nth-child(even) { background-color: #f8fafc; }
+                
+                tr.highlight-row { background-color: #fef08a !important; font-weight: bold; }
+                tr.highlight-row td { border: 1.5px solid #ca8a04; }
+
+                .col-pos { width: 6%; text-align: center; font-weight: bold; }
+                .col-fornecedor { width: 36%; }
+                .col-cnpj { width: 18%; text-align: center; }
+                .col-marca { width: 14%; text-align: center; }
+                .col-lance { width: 13%; text-align: right; font-weight: bold; }
+                .col-situacao { width: 13%; text-align: center; font-size: 7.5pt; font-weight: bold; }
+                
+                .status-arrematante { color: #15803d; }
+                .status-classificado { color: #1e40af; }
+                .status-desclassificado { color: #b91c1c; }
+                .footer { margin-top: 15px; border-top: 1px solid #e2e8f0; padding-top: 8px; font-size: 7.5pt; color: #718096; text-align: center; }
+            </style>
+        </head>
+        <body>
+            <div class="main-title">RESULTADO</div>
+            <div class="sub-header">${itemLote}</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th class="col-pos">POS.</th>
+                        <th class="col-fornecedor">FORNECEDOR</th>
+                        <th class="col-cnpj">CNPJ</th>
+                        <th class="col-marca">MARCA/MODELO</th>
+                        <th class="col-lance">MENOR LANCE (R$)</th>
+                        <th class="col-situacao">SITUAÇÃO</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+        listaProcessada.forEach((item) => {
+            const nomeFornecedorUpper = (item.fornecedor || '').toUpperCase();
+            let isHighlight = empresasDestaque.some(emp => nomeFornecedorUpper.includes(emp));
+            let rowClass = isHighlight ? 'class="highlight-row"' : '';
+            
+            htmlGerado += `
+                <tr ${rowClass}>
+                    <td class="col-pos">${item.posicao || '1º'}</td>
+                    <td class="col-fornecedor">${item.fornecedor || '-'}</td>
+                    <td class="col-cnpj">${item.cnpj || '-'}</td>
+                    <td class="col-marca">${item.marca || '-'}</td>
+                    <td class="col-lance">${item.lance || '0,00'}</td>
+                    <td class="col-situacao ${item.situacaoClass || 'status-classificado'}">${item.situacao || 'Classificado'}</td>
+                </tr>`;
+        });
+
+        htmlGerado += `
+                </tbody>
+            </table>
+            <div class="footer">Relatório de Classificação Consolidada</div>
+        </body>
+        </html>`;
+
+        let element = document.createElement('div');
+        element.innerHTML = htmlGerado;
+
+        let opt = {
+            margin:       [10, 10, 10, 10],
+            filename:     'resultado.pdf',
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().from(element).set(opt).save();
+    }
+
+    /* ================= LÓGICA DA ABA 3: CERTIDÕES (SAFE, JMA, 3R, MINDRAY IDÊNTICAS) ================= */
+    let empresaAtualCertidoes = 'SAFE';
+    let certidoesEmpresas = JSON.parse(localStorage.getItem('certidoes_empresas_db')) || {
+        SAFE: [{ id: 1, doc: "CND Receita Federal / PGFN - SAFE", vencimento: "2026-11-15", link: "https://solucoes.receita.fazenda.gov.br/", arquivoNome: "", arquivoData: "" }],
+        JMA: [{ id: 101, doc: "CND Receita Federal - JMA", vencimento: "2026-10-20", link: "https://solucoes.receita.fazenda.gov.br/", arquivoNome: "", arquivoData: "" }],
+        '3R': [{ id: 201, doc: "CND Receita Federal - 3R", vencimento: "2026-12-01", link: "https://solucoes.receita.fazenda.gov.br/", arquivoNome: "", arquivoData: "" }],
+        MINDRAY: [{ id: 301, doc: "CND Receita Federal - Mindray", vencimento: "2026-11-30", link: "https://solucoes.receita.fazenda.gov.br/", arquivoNome: "", arquivoData: "" }]
+    };
+
+    ['SAFE', 'JMA', '3R', 'MINDRAY'].forEach(emp => {
+        if (!certidoesEmpresas[emp]) certidoesEmpresas[emp] = [];
+    });
+
+    function salvarCertidoesLocalStorage() {
+        localStorage.setItem('certidoes_empresas_db', JSON.stringify(certidoesEmpresas));
+        atualizarCoresSubabasCertidoes();
+    }
+
+    function atualizarCoresSubabasCertidoes() {
+        const empresas = ['SAFE', 'JMA', '3R', 'MINDRAY'];
+        empresas.forEach(emp => {
+            const docs = certidoesEmpresas[emp] || [];
+            let temVencido = false;
+            let temAtencao = false;
+
+            docs.forEach(item => {
+                const dias = calcularDias(item.vencimento);
+                if (dias < 0) temVencido = true;
+                else if (dias <= 15) temAtencao = true;
+            });
+
+            const btn = document.querySelector(`#tab-certidoes .subtab-btn[data-empresa="${emp}"]`);
+            if (btn) {
+                btn.classList.remove('status-alerta-vencido', 'status-alerta-atencao', 'status-alerta-ok');
+                if (temVencido) btn.classList.add('status-alerta-vencido');
+                else if (temAtencao) btn.classList.add('status-alerta-atencao');
+                else if (docs.length > 0) btn.classList.add('status-alerta-ok');
+            }
+        });
+    }
+
+    function trocarEmpresaCertidoes(empresa) {
+        empresaAtualCertidoes = empresa;
+        document.querySelectorAll('#tab-certidoes .subtab-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if(btn.getAttribute('data-empresa') === empresa) btn.classList.add('active');
+        });
+        document.getElementById('empresa-nome-kpi').innerText = empresa;
+        document.getElementById('empresa-nome-form').innerText = empresa;
+        document.getElementById('empresa-nome-tabela').innerText = empresa;
+        renderizarCertidoes();
+    }
+
+    function calcularDias(dataVenc) {
+        const hoje = new Date();
+        hoje.setHours(0,0,0,0);
+        const venc = new Date(dataVenc + 'T00:00:00');
+        return Math.ceil((venc - hoje) / (1000 * 60 * 60 * 24));
+    }
+
+    function renderizarCertidoes() {
+        const tabela = document.getElementById('tabelaDocs');
+        if (!tabela) return;
+        tabela.innerHTML = '';
+        if (!certidoesEmpresas[empresaAtualCertidoes]) certidoesEmpresas[empresaAtualCertidoes] = [];
+        let documentos = certidoesEmpresas[empresaAtualCertidoes];
+        let validos = 0, atencao = 0, vencidos = 0;
+        documentos.sort((a, b) => calcularDias(a.vencimento) - calcularDias(b.vencimento));
+
+        documentos.forEach((item, index) => {
+            const dias = calcularDias(item.vencimento);
+            let statusText = '', badgeClass = '';
+            if (dias < 0) { statusText = '🔴 VENCIDO'; badgeClass = 'badge-vencido'; vencidos++; }
+            else if (dias <= 15) { statusText = '🟡 ATENÇÃO'; badgeClass = 'badge-atencao'; atencao++; }
+            else { statusText = '🟢 VÁLIDO'; badgeClass = 'badge-valido'; validos++; }
+
+            let linkBotao = item.link ? `<a href="${item.link}" target="_blank" class="btn-link">🔗 Renovar</a>` : `<span class="btn-link disabled">Sem Link</span>`;
+            let arquivoHtml = item.arquivoData ? `<a href="${item.arquivoData}" download="${item.arquivoNome || 'certidao'}" class="btn-link" style="background:#43a047;">📥 ${item.arquivoNome.length > 12 ? item.arquivoNome.substring(0,12)+'...' : item.arquivoNome}</a>` : `<span style="color:#aaa; font-size:11px;">Sem arquivo</span>`;
+
+            tabela.innerHTML += `
+                <tr>
+                    <td style="text-align: center;"><input type="checkbox" class="checkbox-large check-certidao-item" value="${index}"></td>
+                    <td><strong>${item.doc}</strong></td>
+                    <td>${item.vencimento.split('-').reverse().join('/')}</td>
+                    <td>${dias < 0 ? Math.abs(dias) + ' dia(s) atrás' : dias + ' dia(s)'}</td>
+                    <td><span class="badge ${badgeClass}">${statusText}</span></td>
+                    <td>${arquivoHtml}</td>
+                    <td>
+                        <div class="action-cell">
+                            ${linkBotao}
+                            <button class="btn-edit" onclick="abrirModalEdicao(${index})">✏️ Editar</button>
+                            <button class="btn-del" onclick="removerCertidao(${index})">Excluir</button>
+                        </div>
+                    </td>
+                </tr>`;
+        });
+        document.getElementById('total-docs').innerText = documentos.length;
+        document.getElementById('total-validos').innerText = validos;
+        document.getElementById('total-atencao').innerText = atencao;
+        document.getElementById('total-vencidos').innerText = vencidos;
+        
+        salvarCertidoesLocalStorage();
+        document.getElementById('checkAllCert').checked = false;
+    }
+
+    function alternarTodasCertidoes(master) {
+        document.querySelectorAll('.check-certidao-item').forEach(cb => cb.checked = master.checked);
+    }
+
+    function enviarAlertaRenovacaoEmailJS() {
+        const checkboxes = document.querySelectorAll('.check-certidao-item:checked');
+        if (checkboxes.length === 0) {
+            alert('Por favor, selecione ao menos uma certidão.');
+            return;
+        }
+
+        const destinatarios = document.getElementById('emailDestinatarioMultiplo').value.trim();
+        let listaAlertasTexto = "";
+        checkboxes.forEach(cb => {
+            let cert = certidoesEmpresas[empresaAtualCertidoes][cb.value];
+            let dias = calcularDias(cert.vencimento);
+            let statusUrgencia = dias < 0 ? `🚨 VENCIDO HÁ ${Math.abs(dias)} DIAS!` : (dias <= 15 ? `⚠️ VENCE EM BREVE (${dias} dias restantes)` : `🟢 Válido (${dias} dias)`);
+            listaAlertasTexto += `• Documento: ${cert.doc}\n  Status: ${statusUrgencia}\n  Vencimento: ${cert.vencimento.split('-').reverse().join('/')}\n  Link: ${cert.link || 'Não informado'}\n--------------------------------------------------\n`;
+        });
+
+        const btn = document.getElementById('btnDispararEmail');
+        btn.innerText = '⏳ Enviando...';
+        btn.disabled = true;
+
+        emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+            to_email: destinatarios,
+            from_email: "licitacao6@gmail.com",
+            subject: `🚨 ALERTA DE RENOVAÇÃO DE CERTIDÕES - ${empresaAtualCertidoes}`,
+            message: `⚠️ ALERTA DE VENCIMENTO\n\nEmpresa: ${empresaAtualCertidoes}\n\nDocumentos que exigem atenção:\n\n${listaAlertasTexto}\nAtenciosamente,\nPainel de Licitações`
+        }).then(() => {
+            alert('Alerta enviado com sucesso!');
+            btn.innerText = '🚨 Enviar Alerta de Renovação';
+            btn.disabled = false;
+            document.getElementById('emailDestinatarioMultiplo').value = '';
+        }, (err) => {
+            alert('Erro ao enviar: ' + JSON.stringify(err));
+            btn.innerText = '🚨 Enviar Alerta de Renovação';
+            btn.disabled = false;
+        });
+    }
+
+    function abrirModalEdicao(index) {
+        let cert = certidoesEmpresas[empresaAtualCertidoes][index];
+        document.getElementById('editIndexCertidao').value = index;
+        document.getElementById('editNomeCert').value = cert.doc;
+        document.getElementById('editDataVenc').value = cert.vencimento;
+        document.getElementById('editLinkRenov').value = cert.link || '';
+        document.getElementById('editArquivoCert').value = '';
+        document.getElementById('modalEditarCertidao').style.display = 'flex';
+    }
+
+    function fecharModalEdicao() {
+        document.getElementById('modalEditarCertidao').style.display = 'none';
+    }
+
+    function salvarEdicaoCertidao() {
+        let index = document.getElementById('editIndexCertidao').value;
+        let novoNome = document.getElementById('editNomeCert').value.trim();
+        let novaData = document.getElementById('editDataVenc').value.trim();
+        let novoLink = document.getElementById('editLinkRenov').value.trim();
+        let fileInput = document.getElementById('editArquivoCert');
+
+        if (!novoNome) { alert('Nome obrigatório.'); return; }
+
+        let certAtual = certidoesEmpresas[empresaAtualCertidoes][index];
+        certAtual.doc = novoNome;
+        certAtual.vencimento = novaData;
+        certAtual.link = novoLink;
+
+        if (fileInput.files.length > 0) {
+            let file = fileInput.files[0];
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                certAtual.arquivoNome = file.name;
+                certAtual.arquivoData = e.target.result;
+                renderizarCertidoes();
+                fecharModalEdicao();
+            };
+            reader.readAsDataURL(file);
+        } else {
+            renderizarCertidoes();
+            fecharModalEdicao();
+        }
+    }
+
+    function adicionarCertidao() {
+        const doc = document.getElementById('documento').value.trim();
+        const venc = document.getElementById('dataVencimento').value;
+        const link = document.getElementById('linkRenovacao').value.trim();
+        const fileInput = document.getElementById('arquivoCertidao');
+
+        if (!doc || !venc) {
+            alert('Preencha o nome do documento e a data de vencimento.');
+            return;
+        }
+
+        if (!certidoesEmpresas[empresaAtualCertidoes]) {
+            certidoesEmpresas[empresaAtualCertidoes] = [];
+        }
+
+        if (fileInput.files.length > 0) {
+            let file = fileInput.files[0];
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                certidoesEmpresas[empresaAtualCertidoes].push({ 
+                    id: Date.now(), 
+                    doc: doc, 
+                    vencimento: venc, 
+                    link: link, 
+                    arquivoNome: file.name, 
+                    arquivoData: e.target.result 
+                });
+                renderizarCertidoes();
+                document.getElementById('docForm').reset();
+            };
+            reader.readAsDataURL(file);
+        } else {
+            certidoesEmpresas[empresaAtualCertidoes].push({ 
+                id: Date.now(), 
+                doc: doc, 
+                vencimento: venc, 
+                link: link, 
+                arquivoNome: "", 
+                arquivoData: "" 
+            });
+            renderizarCertidoes();
+            document.getElementById('docForm').reset();
+        }
+    }
+
+    function removerCertidao(index) {
+        if(confirm("Excluir esta certidão?")) {
+            certidoesEmpresas[empresaAtualCertidoes].splice(index, 1);
+            renderizarCertidoes();
+        }
+    }
+
+
+    /* ================= LÓGICA DA ABA 4: VALIDADE DOS PORTAIS ================= */
+    let empresaAtualPortais = 'SAFE';
+    let portaisEmpresas = JSON.parse(localStorage.getItem('portais_empresas_db')) || {
+        SAFE: [{ id: 1, portal: "Portal Comprasnet", vencimento: "2027-01-10", link: "https://www.gov.br/compras" }],
+        JMA: [{ id: 101, portal: "Licitações-E BB", vencimento: "2026-12-15", link: "https://www.licitacoes-e.com.br" }]
+    };
+
+    function salvarPortaisLocalStorage() {
+        localStorage.setItem('portais_empresas_db', JSON.stringify(portaisEmpresas));
+        atualizarCoresSubabasPortais();
+    }
+
+    function atualizarCoresSubabasPortais() {
+        const empresas = ['SAFE', 'JMA'];
+        empresas.forEach(emp => {
+            const portais = portaisEmpresas[emp] || [];
+            let temVencido = false;
+            let temAtencao = false;
+
+            portais.forEach(item => {
+                const dias = calcularDias(item.vencimento);
+                if (dias < 0) temVencido = true;
+                else if (dias <= 15) temAtencao = true;
+            });
+
+            const btn = document.querySelector(`#tab-portais .subtab-btn[data-empresa="${emp}"]`);
+            if (btn) {
+                btn.classList.remove('status-alerta-vencido', 'status-alerta-atencao', 'status-alerta-ok');
+                if (temVencido) btn.classList.add('status-alerta-vencido');
+                else if (temAtencao) btn.classList.add('status-alerta-atencao');
+                else if (portais.length > 0) btn.classList.add('status-alerta-ok');
+            }
+        });
+    }
+
+    function trocarEmpresaPortais(empresa) {
+        empresaAtualPortais = empresa;
+        document.querySelectorAll('#tab-portais .subtab-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if(btn.getAttribute('data-empresa') === empresa) btn.classList.add('active');
+        });
+        document.getElementById('empresa-nome-kpi-portais').innerText = empresa;
+        document.getElementById('empresa-nome-form-portais').innerText = empresa;
+        document.getElementById('empresa-nome-tabela-portais').innerText = empresa;
+        renderizarPortais();
+    }
+
+    function renderizarPortais() {
+        const tabela = document.getElementById('tabelaPortais');
+        if (!tabela) return;
+        tabela.innerHTML = '';
+        let portais = portaisEmpresas[empresaAtualPortais] || [];
+        let validos = 0, atencao = 0, vencidos = 0;
+        portais.sort((a, b) => calcularDias(a.vencimento) - calcularDias(b.vencimento));
+
+        portais.forEach((item, index) => {
+            const dias = calcularDias(item.vencimento);
+            let statusText = '', badgeClass = '';
+            if (dias < 0) { statusText = '🔴 VENCIDO'; badgeClass = 'badge-vencido'; vencidos++; }
+            else if (dias <= 15) { statusText = '🟡 ATENÇÃO'; badgeClass = 'badge-atencao'; atencao++; }
+            else { statusText = '🟢 VÁLIDO'; badgeClass = 'badge-valido'; validos++; }
+
+            let linkBotao = item.link ? `<a href="${item.link}" target="_blank" class="btn-link">🔗 Acessar</a>` : `<span class="btn-link disabled">Sem Link</span>`;
+
+            tabela.innerHTML += `
+                <tr>
+                    <td style="text-align: center;"><input type="checkbox" class="checkbox-large check-portal-item" value="${index}"></td>
+                    <td><strong>${item.portal}</strong></td>
+                    <td>${item.vencimento.split('-').reverse().join('/')}</td>
+                    <td>${dias < 0 ? Math.abs(dias) + ' dia(s) atrás' : dias + ' dia(s)'}</td>
+                    <td><span class="badge ${badgeClass}">${statusText}</span></td>
+                    <td>
+                        <div class="action-cell">
+                            ${linkBotao}
+                            <button class="btn-edit" onclick="abrirModalEdicaoPortal(${index})">✏️ Editar</button>
+                            <button class="btn-del" onclick="removerPortal(${index})">Excluir</button>
+                        </div>
+                    </td>
+                </tr>`;
+        });
+        document.getElementById('total-portais').innerText = portais.length;
+        document.getElementById('total-validos-portais').innerText = validos;
+        document.getElementById('total-atencao-portais').innerText = atencao;
+        document.getElementById('total-vencidos-portais').innerText = vencidos;
+        
+        salvarPortaisLocalStorage();
+        document.getElementById('checkAllPortais').checked = false;
+    }
+
+    function alternarTodosPortais(master) {
+        document.querySelectorAll('.check-portal-item').forEach(cb => cb.checked = master.checked);
+    }
+
+    function enviarAlertaPortaisEmailJS() {
+        const checkboxes = document.querySelectorAll('.check-portal-item:checked');
+        if (checkboxes.length === 0) {
+            alert('Por favor, selecione ao menos um portal.');
+            return;
+        }
+
+        const destinatarios = document.getElementById('emailDestinatarioPortais').value.trim();
+        let listaAlertasTexto = "";
+        checkboxes.forEach(cb => {
+            let portal = portaisEmpresas[empresaAtualPortais][cb.value];
+            let dias = calcularDias(portal.vencimento);
+            let statusUrgencia = dias < 0 ? `🚨 VENCIDO HÁ ${Math.abs(dias)} DIAS!` : (dias <= 15 ? `⚠️ VENCE EM BREVE (${dias} dias restantes)` : `🟢 Válido (${dias} dias)`);
+            listaAlertasTexto += `• Portal: ${portal.portal}\n  Status: ${statusUrgencia}\n  Vencimento: ${portal.vencimento.split('-').reverse().join('/')}\n  Link: ${portal.link || 'Não informado'}\n--------------------------------------------------\n`;
+        });
+
+        const btn = document.getElementById('btnDispararEmailPortais');
+        btn.innerText = '⏳ Enviando...';
+        btn.disabled = true;
+
+        emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+            to_email: destinatarios,
+            from_email: "licitacao6@gmail.com",
+            subject: `🚨 ALERTA DE RENOVAÇÃO DE PORTAIS - ${empresaAtualPortais}`,
+            message: `⚠️ ALERTA DE VENCIMENTO DE PORTAIS\n\nEmpresa: ${empresaAtualPortais}\n\nPortais que exigem atenção:\n\n${listaAlertasTexto}\nAtenciosamente,\nPainel de Licitações`
+        }).then(() => {
+            alert('Alerta de portais enviado com sucesso!');
+            btn.innerText = '🚨 Enviar Alerta de Portais';
+            btn.disabled = false;
+            document.getElementById('emailDestinatarioPortais').value = '';
+        }, (err) => {
+            alert('Erro ao enviar: ' + JSON.stringify(err));
+            btn.innerText = '🚨 Enviar Alerta de Portais';
+            btn.disabled = false;
+        });
+    }
+
+    function abrirModalEdicaoPortal(index) {
+        let portal = portaisEmpresas[empresaAtualPortais][index];
+        document.getElementById('editIndexPortal').value = index;
+        document.getElementById('editNomePortal').value = portal.portal;
+        document.getElementById('editDataVencPortal').value = portal.vencimento;
+        document.getElementById('editLinkPortal').value = portal.link || '';
+        document.getElementById('modalEditarPortal').style.display = 'flex';
+    }
+
+    function fecharModalEdicaoPortal() {
+        document.getElementById('modalEditarPortal').style.display = 'none';
+    }
+
+    function salvarEdicaoPortal() {
+        let index = document.getElementById('editIndexPortal').value;
+        let novoNome = document.getElementById('editNomePortal').value.trim();
+        let novaData = document.getElementById('editDataVencPortal').value.trim();
+        let novoLink = document.getElementById('editLinkPortal').value.trim();
+
+        if (!novoNome) { alert('Nome obrigatório.'); return; }
+
+        portaisEmpresas[empresaAtualPortais][index] = {
+            ...portaisEmpresas[empresaAtualPortais][index],
+            portal: novoNome,
+            vencimento: novaData,
+            link: novoLink
+        };
+        renderizarPortais();
+        fecharModalEdicaoPortal();
+    }
+
+    function adicionarPortal() {
+        const portal = document.getElementById('nomePortal').value;
+        const venc = document.getElementById('dataVencimentoPortal').value;
+        const link = document.getElementById('linkPortalAcesso').value;
+        if (!portaisEmpresas[empresaAtualPortais]) portaisEmpresas[empresaAtualPortais] = [];
+        portaisEmpresas[empresaAtualPortais].push({ id: Date.now(), portal, vencimento: venc, link });
+        renderizarPortais();
+        document.getElementById('portalForm').reset();
+    }
+
+    function removerPortal(index) {
+        if(confirm("Excluir este portal?")) {
+            portaisEmpresas[empresaAtualPortais].splice(index, 1);
+            renderizarPortais();
+        }
+    }
+</script>
+
+</body>
+</html>
